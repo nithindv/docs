@@ -2,7 +2,7 @@ openapi: 3.0.1
 info:
   title: Emergency ePass
   description: This is API definition for an ePass server. More details about ePass
-    fucntionality can be found at Swagger at [https://www.digit.org](https://www.digit.org)
+    fucntionality can be found at [https://www.digit.org](https://www.digit.org)
   termsOfService: https://digit.org
   contact:
     email: contact@egovernments.org
@@ -31,7 +31,7 @@ paths:
       summary: Request a new ePass
       operationId: createPass
       requestBody:
-        description: This API allows requester to request a new ePass. Passes are always created in requested status. They can be downloaded once the approval happens using the required workflow. All pass requesters are required to call this method to request a new pass. Api accepts requestHeader and Pass object as input parameters
+        description: This API allows requester to request a new ePass. Passes are always created in "requested" status. They can be downloaded once the approval happens using the required workflow. All pass requesters are required to call this method to request a new pass. Api accepts requestHeader and Pass object as input parameters
         content:
           application/json:
             schema:
@@ -47,7 +47,7 @@ paths:
         required: true
       responses:
         200:
-          description: Processing Successful. Pass Object is returned along with system generated uuid and pass id. Pelase note that based on teh workfow configured at the server - this pass may still not be a valid pass (a valid pass should have status as approved, have issuing authority details and a valid digital signature assigned to it).  
+          description: Processing Successful. Pass Object is returned along with system generated uuid and pass id. Pelase note that based on the workfow configured at the server - this pass may still not be a valid pass (a valid pass should have status as approved, have issuing authority details and a valid digital signature assigned to it).  
           content:
             application/json:
               schema:
@@ -75,7 +75,7 @@ paths:
       summary: Approve/Reject a pass using passId or mobileNumber - this would be used by workflows to update teh pass system with final status of the approval workflow on the pass. This method will only be available for specific roles/systems that have privilege to approve/reject a pass
       operationId: updatePass
       requestBody:
-        description: Request Object that has tenantid and either passId or mobileNumber for which the current pass need to be revoked. Servers may choose to support all pass revocation for a tenant, but this must be implemented with care and under specific roles. 
+        description: Request Object that has tenantid and either passId and/or mobileNumber for which the current pass need to be updated. Please note that at least one of either passId or mobileNumber is mandatory. 
         content:
           application/json:
             schema:
@@ -97,9 +97,7 @@ paths:
               required: 
                 - header
                 - tenantid
-                - passId
                 - status
-
         required: true
       responses:
         200:
@@ -118,7 +116,7 @@ paths:
       summary: Search passes using a combination of parameters 
       operationId: searchPass
       requestBody:
-        description: Search passes using combination of  parameters. All Parameters given will be treated as and condition for the search. 
+        description: Search passes using combination of  parameters. If multiple Parameter values are provieded they will be treated as and condition for the search. Please note that if passId is provided then mobileNumber is not mandatory for the search.
         content:
           application/json:
             schema:
@@ -171,6 +169,8 @@ paths:
                   $ref: '#/components/schemas/RequestHeader'
                 passId:
                   type: string
+                tenantId:
+                  type: string
                 mobileNumber:
                   type: string
                   example: 9999999999
@@ -203,16 +203,18 @@ paths:
               properties:
                 header:
                   $ref: '#/components/schemas/RequestHeader'
+                mobileNumber:
+                  type: string
+                  example: 9999999999
                 passId:
                   type: string
               required: 
                 - header
                 - passId
-              
         required: true
       responses:
         200:
-          description: Succesfully Revoked
+          description: Returns pass verification result pass object with validation details or error in case of a problem
           content:
             application/json:
               schema:
@@ -243,6 +245,8 @@ components:
       properties:
         tenantId:
           description: Namespaced Tenant id of the issuing entity that will issue the pass. E.g. in the COVID case where states have the responsibility of issuing the passes (basically the tenants in this case are based on geographical hirerchy) in which case state will be the tenant in the system. Later if states wants to further distribute teh responsibility the tenant may be state.city 
+          
+            Please note that a issuing entity may issue the pass in the name of any issuing authority as configured with the system. 
           type: string
           maxLength: 128
         passId:
@@ -284,19 +288,20 @@ components:
           
             Based on geographical validity of the pass this may be indicate only state (valid thorughout the state), state + district (valid within a district), or state + district + city (valid within the city), or state + district + city + locality (valid only within a locality in the city). 
           
-            > *Question - Or should we use an explicit object like Location - example definition towards the end of this document.  
+            Alternatively, this field may contain the zipcode of the geography in which the pass id valid. Please mark field isLocationAsZipcode as true to enable the server to parse the origin in this format.   
             
           type: string
-          pattern: '^([a-zA-Z0-9-_]+\.)*[a-zA-Z0-9][a-zA-Z0-9-_]+\.[a-zA-Z]$'
         destination:
           description: For cases where goal of the apss is to permit the movement between two specific geo location this field indocates the Namespaced state + district + city + locality combination for the destination. The namespace convention is - **state.district.city.locality**
           
             For cases where origin and destination locations fall betwee two different tenants (basically two different approving authorites) separate passes with same pass holder details may be issued by each tenant (think of it as airline boading passes for a multi hop flight). 
             
-            > *Question - Or should we use an explicit object like Location - example definition towards the end of this document.  
-            
+            Alternatively, this field may contain the zipcode of the geography in which the pass id valid. Please mark field isLocationAsZipcode as true to enable the server to parse the origin in this format.  
           type: string
-          pattern: '^([a-zA-Z0-9-_]+\.)*[a-zA-Z0-9][a-zA-Z0-9-_]+\.[a-zA-Z]$'
+        isLocationAsZipcode:
+          type: boolean
+          default: false
+          description: Whether "origin" and "destination" locations are provided as zipcodes
         idProof:
           $ref: '#/components/schemas/IDProof'
         requester:
@@ -306,26 +311,18 @@ components:
           allOf:
           - $ref: '#/components/schemas/IssuingAuthority'
         signature:
-          description: Digital signature by the issuing authority to ensure the validity of the pass. Signing to be performed on the pipe separated combination of the pass fields as follows - 
-          
-            tenantId|passId|validFrom|validTill|mobileNumber|status|origin|destination|requester.name|issuer.name|issuer.contact 
-            
-            Substitute blank for the null/blank values in above sequence. 
-          
-            > Q - should we just sign the whole object? I think it is better to specifically reommend the order as above to prevent any confusion! However let's recheck.  
-          
+          description: Digital signature by the issuing authority to ensure the validity of the pass
           type: string
           readOnly: true
         rejectionReason:
           description: Reason for rejection in case request for pass is rejected by the system
           maxLength: 256
           type: string
-          
     Requester:
       description: Requester details need to be provided for cases where pass is being requested on behalf of someone else. This may be because of reasons such as -
         1. An orgranization is getting the pass issued to its essential employees. Please note that in such cases system may run additional checks on the requesters. 
         2. Department is making the request on behalf of a person unable to do so
-        3. ASOme other person is helping the actual pass holder (due to pass holder unable to access the system)
+        3. Some other person is helping the actual pass holder (due to pass holder unable to access the system)
       type: object
       properties:
         name:
@@ -358,7 +355,7 @@ components:
     IDProof:
       description: In case where a particular tenant needs the ID proof to be carried along the pass - these field allow the pass holder to indicate the type of id being carried and last 4 digits of the aforemention id type. It is important from the privacy and security point of view that complete ID details of the pass holder are not captured in the pass.
       
-        > Question - Do we need this at all. Can't the pass system make a declaration that passes ar only valid when accompanied by a valid government id? 
+        > Warning - Based on multiple discussions, it is possible that this is deprecated and repaced with simple declaration on the pass that it is only valid when accompanied by a valid government id
       
       required: 
       - idType
