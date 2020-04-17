@@ -1,0 +1,400 @@
+openapi: 3.0.1
+info:
+  title: Emergency ePass
+  description: This is API definition for an ePass server. More details about ePass
+    fucntionality can be found at Swagger at [https://www.digit.org](https://www.digit.org)
+  termsOfService: https://digit.org
+  contact:
+    email: contact@egovernments.org
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.1
+
+servers:
+- url: https://epassapi.digit.org/pass/v1
+
+tags:
+- name: Search
+  description: Search passes using a combination of parameters 
+- name: Revoke
+  description: Revoke a pass using passId or mobileNumber 
+- name: Verify
+  description: Request Object that has passId for which the current pass need to be verified.  
+
+paths:
+
+  /_create:
+    post:
+      tags:
+      - Create
+      summary: Request a new ePass
+      operationId: createPass
+      requestBody:
+        description: This API allows requester to request a new ePass. Passes are always created in requested status. They can be downloaded once the approval happens using the required workflow. All pass requesters are required to call this method to request a new pass. Api accepts requestHeader and Pass object as input parameters
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                header:
+                  $ref: '#/components/schemas/RequestHeader'
+                pass:
+                  $ref: '#/components/schemas/Pass'
+              required:
+                - header
+                - pass
+        required: true
+      responses:
+        200:
+          description: Processing Successful. Pass Object is returned along with system generated uuid and pass id. Pelase note that based on teh workfow configured at the server - this pass may still not be a valid pass (a valid pass should have status as approved, have issuing authority details and a valid digital signature assigned to it).  
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messageId: 
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+                  pass:
+                    $ref: '#/components/schemas/Pass'
+        default:
+          description: Request failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+
+  /_update:
+    post:
+      tags:
+      - Update
+      summary: Approve/Reject a pass using passId or mobileNumber - this would be used by workflows to update teh pass system with final status of the approval workflow on the pass. This method will only be available for specific roles/systems that have privilege to approve/reject a pass
+      operationId: updatePass
+      requestBody:
+        description: Request Object that has tenantid and either passId or mobileNumber for which the current pass need to be revoked. Servers may choose to support all pass revocation for a tenant, but this must be implemented with care and under specific roles. 
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                header:
+                  $ref: '#/components/schemas/RequestHeader'
+                tenantid:
+                  type: string
+                passId:
+                  type: string
+                mobileNumber:
+                  type: string
+                status:
+                  type: string
+                  enum: 
+                  - approved
+                  - rejected
+              required: 
+                - header
+                - tenantid
+                - passId
+                - status
+
+        required: true
+      responses:
+        200:
+          description: Succesfully Updated
+        default:
+          description: Request failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /_search:
+    post:
+      tags:
+      - Search
+      summary: Search passes using a combination of parameters 
+      operationId: searchPass
+      requestBody:
+        description: Search passes using combination of  parameters. All Parameters given will be treated as and condition for the search. 
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                header:
+                  $ref: '#/components/schemas/RequestHeader'
+                passId:
+                  type: string
+                mobileNumber:
+                  type: string
+                  example: 9999999999
+                status:
+                  type: string
+                  example: approved
+              required: 
+                - header
+                - mobileNumber
+        required: true
+      responses:
+        200:
+          description: Operation Succesful
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pass'
+        default:
+          description: Request failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      
+  /_revoke:
+    post:
+      tags:
+      - Revoke
+      summary: revoke a pass using passId or mobileNumber
+      operationId: revokePass
+      requestBody:
+        description: Request Object that has either passId or mobileNumber for which the current pass need to be revoked. Servers may choose to support all pass revocation for a tenant, but this must be implemented with care and under specific roles. 
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                header:
+                  $ref: '#/components/schemas/RequestHeader'
+                passId:
+                  type: string
+                mobileNumber:
+                  type: string
+                  example: 9999999999
+              required: 
+                - header
+                - mobileNumber
+        required: true
+      responses:
+        200:
+          description: Succesfully Revoked
+        default:
+          description: Request failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /_verify:
+    post:
+      tags:
+      - Verify
+      summary: verify a pass using passId 
+      operationId: verifyPass
+      requestBody:
+        description: Request Object that has passId for which the current pass need to be verified. 
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                header:
+                  $ref: '#/components/schemas/RequestHeader'
+                passId:
+                  type: string
+              required: 
+                - header
+                - passId
+              
+        required: true
+      responses:
+        200:
+          description: Succesfully Revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: 
+                  isValid: 
+                    type: boolean
+                  pass:
+                    $ref: '#/components/schemas/Pass'
+        default:
+          description: Request failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Pass:
+      required:     
+      - mobileNumber
+      - status
+      - origin
+      - purpose
+      - validFrom
+      - validTill
+      type: object
+      properties:
+        tenantId:
+          description: Namespaced Tenant id of the issuing entity that will issue the pass. E.g. in the COVID case where states have the responsibility of issuing the passes (basically the tenants in this case are based on geographical hirerchy) in which case state will be the tenant in the system. Later if states wants to further distribute teh responsibility the tenant may be state.city 
+          type: string
+          maxLength: 128
+        passId:
+          description: Human readable id assigned to the pass to be used in verification calls and display purposes. This value only needs to be unique within the context of active passes within a duration. 
+          maxLength: 12
+          minLength: 6
+          type: string
+          example: cavkAF
+        validFrom:
+          description: Timestamp (as per RFC3339 format) from which this pass is valid 
+          type: integer
+          format: date-time
+        validTill:
+          description: Timestamp (as per RFC3339 format) upto which this pass is valid
+          type: string
+          format: date-time
+        mobileNumber:
+          description: mobile number of the person for whom thsi pass is being requested/generated. Please note this value is for teh pass holder. For cases where the passes are requested by someone else on behalf this person, details of that orgnization/Person/entity should be provided in the requestor fields. 
+          pattern: ^\d{10}$
+          type: string
+          example: 9999999999
+        status:
+          type: string
+          description: Pass status
+          readOnly: true
+          enum:
+          - requested
+          - approved
+          - rejected
+          - expired
+          example: approved
+        purpose:
+          description: This field captures the reason for which the pass is being requeted, to be filled by the requester of the pass
+          maxLength: 256
+          type: string
+          example: Distribution/Transport/Factory
+        origin:
+          description: Namespaced Origin/ Starting location of the pass holder. This is a mandatory fiels as server must perform checks to see that this location is valid for the tenant to which the pass request is being made. The namespace convention is - **state.district.city.locality**
+          
+            Based on geographical validity of the pass this may be indicate only state (valid thorughout the state), state + district (valid within a district), or state + district + city (valid within the city), or state + district + city + locality (valid only within a locality in the city). 
+          
+            > *Question - Or should we use an explicit object like Location - example definition towards the end of this document.  
+            
+          type: string
+          pattern: '^([a-zA-Z0-9-_]+\.)*[a-zA-Z0-9][a-zA-Z0-9-_]+\.[a-zA-Z]$'
+        destination:
+          description: For cases where goal of the apss is to permit the movement between two specific geo location this field indocates the Namespaced state + district + city + locality combination for the destination. The namespace convention is - **state.district.city.locality**
+          
+            For cases where origin and destination locations fall betwee two different tenants (basically two different approving authorites) separate passes with same pass holder details may be issued by each tenant (think of it as airline boading passes for a multi hop flight). 
+            
+            > *Question - Or should we use an explicit object like Location - example definition towards the end of this document.  
+            
+          type: string
+          pattern: '^([a-zA-Z0-9-_]+\.)*[a-zA-Z0-9][a-zA-Z0-9-_]+\.[a-zA-Z]$'
+        idProof:
+          $ref: '#/components/schemas/IDProof'
+        requester:
+          $ref: '#/components/schemas/Requester'
+        issuer:
+          readOnly: true
+          allOf:
+          - $ref: '#/components/schemas/IssuingAuthority'
+        signature:
+          description: Digital signature by the issuing authority to ensure the validity of the pass. Signing to be performed on the pipe separated combination of the pass fields as follows - 
+          
+            tenantId|passId|validFrom|validTill|mobileNumber|status|origin|destination|requester.name|issuer.name|issuer.contact 
+            
+            Substitute blank for the null/blank values in above sequence. 
+          
+            > Q - should we just sign the whole object? I think it is better to specifically reommend the order as above to prevent any confusion! However let's recheck.  
+          
+          type: string
+          readOnly: true
+        rejectionReason:
+          description: Reason for rejection in case request for pass is rejected by the system
+          maxLength: 256
+          type: string
+          
+    Requester:
+      description: Requester details need to be provided for cases where pass is being requested on behalf of someone else. This may be because of reasons such as -
+        1. An orgranization is getting the pass issued to its essential employees. Please note that in such cases system may run additional checks on the requesters. 
+        2. Department is making the request on behalf of a person unable to do so
+        3. ASOme other person is helping the actual pass holder (due to pass holder unable to access the system)
+      type: object
+      properties:
+        name:
+          description: name of the person/organization/entity for cases when the pass request is not being done by the passholder themselves. 
+          type: string 
+        email:
+          type: string
+        mobileNumber:
+          pattern: ^\d{10}$
+          type: string
+          example: 9999999999
+      required:
+        - name
+        
+    IssuingAuthority:
+      description: Human readable details of the issuing authority that can be embedded in the pass. These details will ideally be picked from the tenant configuration on the server. 
+      type: object
+      properties:
+        name:
+          type: string 
+          example: Kwality Foods
+        department:
+          type: string
+        contact:
+          type: string
+          example: admin@kwalityfoods.org
+        additionalText:
+          type: string
+
+    IDProof:
+      description: In case where a particular tenant needs the ID proof to be carried along the pass - these field allow the pass holder to indicate the type of id being carried and last 4 digits of the aforemention id type. It is important from the privacy and security point of view that complete ID details of the pass holder are not captured in the pass.
+      
+        > Question - Do we need this at all. Can't the pass system make a declaration that passes ar only valid when accompanied by a valid government id? 
+      
+      required: 
+      - idType
+      - number
+      type: object
+      properties:
+        idType:
+          maxLength: 16
+          type: string
+        number:
+          maxLength: 4
+          type: string
+
+    Error:
+      description: In case of any failure during processing of the requests server is required to return the error object. It is recommended taht error codes are namespaced error codes taht can provide contexual information about the error just by examining the code, e.g. origin.badlocation. 
+      
+        In case debug is permitted for a certain role, api client has indicated the need to get the debug information during the call and server is configured to honor the debug infromation request - it is recommended that highly detailed ifnormation about the problem (along with complete stack trace) is provided to the api client.
+      required:
+      - code
+      - message
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        debugDetail:
+          type: string
+          
+    RequestHeader:
+      type: object
+      properties:
+        messageId: 
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        apiToken:
+          type: string
