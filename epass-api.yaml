@@ -18,7 +18,7 @@ tags:
 - name: Create
   description: Request a new ePass
 - name: Update
-  description: Approve/Reject a pass using passId or mobileNumber - this would be used by workflows to update the pass system with final status of the approval workflow on the pass. This method will only be available for specific roles/systems that have privilege to approve/reject a pass
+  description: Approve/Reject a pass using passId or mobileNumber
 - name: Search
   description: Search passes using a combination of parameters 
 - name: Revoke
@@ -75,7 +75,7 @@ paths:
     post:
       tags:
       - Update
-      summary: Approve/Reject a pass using passId or mobileNumber - this would be used by workflows to update the pass system with final status of the approval workflow on the pass. This method will only be available for specific roles/systems that have privilege to approve/reject a pass
+      summary: Approve/Reject a pass using passId or mobileNumber - this would be used by workflows to update the pass system with final status of the approval workflow on the pass and will be role based. 
       operationId: updatePass
       requestBody:
         description: Request Object that has tenantid and either passId and/or mobileNumber for which the current pass need to be updated. Please note that at least one of either passId or mobileNumber is mandatory. 
