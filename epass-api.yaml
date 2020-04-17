@@ -1,6 +1,6 @@
 openapi: 3.0.1
 info:
-  title: Emergency ePass
+  title: Emergency Pass
   description: This is API definition for an ePass server. More details about ePass
     fucntionality can be found at [https://www.digit.org](https://www.digit.org)
   termsOfService: https://digit.org
@@ -15,12 +15,16 @@ servers:
 - url: https://epassapi.digit.org/pass/v1
 
 tags:
+- name: Create
+  description: Request a new ePass
+- name: Update
+  description: Approve/Reject a pass using passId or mobileNumber - this would be used by workflows to update the pass system with final status of the approval workflow on the pass. This method will only be available for specific roles/systems that have privilege to approve/reject a pass
 - name: Search
   description: Search passes using a combination of parameters 
 - name: Revoke
-  description: Revoke a pass using passId or mobileNumber 
+  description: Revoke a pass using passId or mobileNumber
 - name: Verify
-  description: Request Object that has passId for which the current pass need to be verified.  
+  description: Verify a pass using passId 
 
 paths:
 
@@ -67,12 +71,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-
   /_update:
     post:
       tags:
       - Update
-      summary: Approve/Reject a pass using passId or mobileNumber - this would be used by workflows to update teh pass system with final status of the approval workflow on the pass. This method will only be available for specific roles/systems that have privilege to approve/reject a pass
+      summary: Approve/Reject a pass using passId or mobileNumber - this would be used by workflows to update the pass system with final status of the approval workflow on the pass. This method will only be available for specific roles/systems that have privilege to approve/reject a pass
       operationId: updatePass
       requestBody:
         description: Request Object that has tenantid and either passId and/or mobileNumber for which the current pass need to be updated. Please note that at least one of either passId or mobileNumber is mandatory. 
@@ -87,8 +90,10 @@ paths:
                   type: string
                 passId:
                   type: string
+                  example: cavkAF
                 mobileNumber:
                   type: string
+                  example: 9999999999
                 status:
                   type: string
                   enum: 
@@ -116,7 +121,7 @@ paths:
       summary: Search passes using a combination of parameters 
       operationId: searchPass
       requestBody:
-        description: Search passes using combination of  parameters. If multiple Parameter values are provieded they will be treated as and condition for the search. Please note that if passId is provided then mobileNumber is not mandatory for the search.
+        description: Search passes using combination of parameters. If multiple parameter values are provieded they will be treated as an "and" condition for the search. Please note that if passId is provided then mobileNumber is not mandatory for the search.
         content:
           application/json:
             schema:
@@ -126,6 +131,7 @@ paths:
                   $ref: '#/components/schemas/RequestHeader'
                 passId:
                   type: string
+                  example: cavkAF                    
                 mobileNumber:
                   type: string
                   example: 9999999999
@@ -156,7 +162,7 @@ paths:
     post:
       tags:
       - Revoke
-      summary: revoke a pass using passId or mobileNumber
+      summary: Revoke a pass using passId or mobileNumber
       operationId: revokePass
       requestBody:
         description: Request Object that has either passId or mobileNumber for which the current pass need to be revoked. Servers may choose to support all pass revocation for a tenant, but this must be implemented with care and under specific roles. 
@@ -169,6 +175,7 @@ paths:
                   $ref: '#/components/schemas/RequestHeader'
                 passId:
                   type: string
+                  example: cavkAF
                 tenantId:
                   type: string
                 mobileNumber:
@@ -192,7 +199,7 @@ paths:
     post:
       tags:
       - Verify
-      summary: verify a pass using passId 
+      summary: Verify a pass using passId 
       operationId: verifyPass
       requestBody:
         description: Request Object that has passId for which the current pass need to be verified. 
@@ -257,7 +264,7 @@ components:
           example: cavkAF
         validFrom:
           description: Timestamp (as per RFC3339 format) from which this pass is valid 
-          type: integer
+          type: string
           format: date-time
         validTill:
           description: Timestamp (as per RFC3339 format) upto which this pass is valid
@@ -288,15 +295,15 @@ components:
           
             Based on geographical validity of the pass this may be indicate only state (valid thorughout the state), state + district (valid within a district), or state + district + city (valid within the city), or state + district + city + locality (valid only within a locality in the city). 
           
-            Alternatively, this field may contain the zipcode of the geography in which the pass id valid. Please mark field isLocationAsZipcode as true to enable the server to parse the origin in this format.   
+            Alternatively, this field may contain the zipcode of the geography in which the pass is valid. Please mark field isLocationAsZipcode as true to enable the server to parse the origin in this format.   
             
           type: string
         destination:
-          description: For cases where goal of the apss is to permit the movement between two specific geo location this field indocates the Namespaced state + district + city + locality combination for the destination. The namespace convention is - **state.district.city.locality**
+          description: For cases where goal of the pass is to permit the movement between two specific geolocation, this field indocates the Namespaced state + district + city + locality combination for the destination. The namespace convention is - **state.district.city.locality**
           
             For cases where origin and destination locations fall betwee two different tenants (basically two different approving authorites) separate passes with same pass holder details may be issued by each tenant (think of it as airline boading passes for a multi hop flight). 
             
-            Alternatively, this field may contain the zipcode of the geography in which the pass id valid. Please mark field isLocationAsZipcode as true to enable the server to parse the origin in this format.  
+            Alternatively, this field may contain the zipcode of the geography in which the pass is valid. Please mark field isLocationAsZipcode as true to enable the server to parse the origin in this format.  
           type: string
         isLocationAsZipcode:
           type: boolean
@@ -328,8 +335,10 @@ components:
         name:
           description: name of the person/organization/entity for cases when the pass request is not being done by the passholder themselves. 
           type: string 
+          example: John Doe
         email:
           type: string
+          example: johndoe@gmail.com
         mobileNumber:
           pattern: ^\d{10}$
           type: string
@@ -343,12 +352,12 @@ components:
       properties:
         name:
           type: string 
-          example: Kwality Foods
+          example: Govt of Karnataka
         department:
           type: string
         contact:
           type: string
-          example: admin@kwalityfoods.org
+          example: kar@gov.in
         additionalText:
           type: string
 
@@ -395,3 +404,4 @@ components:
           format: date-time
         apiToken:
           type: string
+          example: 04875f14-80da-11ea-bc55-0242ac130003
