@@ -1,6 +1,6 @@
 openapi: 3.0.1
 info:
-  title: Emergency ePass
+  title: Emergency Pass
   description: This is API definition for an ePass server. More details about ePass
     fucntionality can be found at [https://www.digit.org](https://www.digit.org)
   termsOfService: https://digit.org
@@ -15,12 +15,16 @@ servers:
 - url: https://epassapi.digit.org/pass/v1
 
 tags:
+- name: Create
+  description: Request a new ePass
+- name: Update
+  description: Approve/Reject a pass using passId or mobileNumber
 - name: Search
   description: Search passes using a combination of parameters 
 - name: Revoke
-  description: Revoke a pass using passId or mobileNumber 
+  description: Revoke a pass using passId or mobileNumber
 - name: Verify
-  description: Request Object that has passId for which the current pass need to be verified.  
+  description: Verify a pass using passId 
 
 paths:
   /_create:
@@ -66,12 +70,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-
   /_update:
     post:
       tags:
       - Update
-      summary: Approve/Reject a pass using passId or mobileNumber - this would be used by workflows to update teh pass system with final status of the approval workflow on the pass. This method will only be available for specific roles/systems that have privilege to approve/reject a pass
+      summary: Approve/Reject a pass using passId or mobileNumber - this would be used by workflows to update the pass system with final status of the approval workflow on the pass and will be role based. 
       operationId: updatePass
       requestBody:
         description: Request Object that has tenantid and either passId and/or mobileNumber for which the current pass need to be updated. Please note that at least one of either passId or mobileNumber is mandatory. 
@@ -86,8 +89,10 @@ paths:
                   type: string
                 passId:
                   type: string
+                  example: cavkAF
                 mobileNumber:
                   type: string
+                  example: 9999999999
                 status:
                   type: string
                   enum: 
@@ -115,7 +120,7 @@ paths:
       summary: Search passes using a combination of parameters 
       operationId: searchPass
       requestBody:
-        description: Search passes using combination of  parameters. If multiple Parameter values are provieded they will be treated as and condition for the search. Please note that if passId is provided then mobileNumber is not mandatory for the search.
+        description: Search passes using combination of parameters. If multiple parameter values are provieded they will be treated as an "and" condition for the search. Please note that if passId is provided then mobileNumber is not mandatory for the search.
         content:
           application/json:
             schema:
@@ -125,6 +130,7 @@ paths:
                   $ref: '#/components/schemas/RequestHeader'
                 passId:
                   type: string
+                  example: cavkAF                    
                 mobileNumber:
                   type: string
                   example: 9999999999
@@ -155,7 +161,7 @@ paths:
     post:
       tags:
       - Revoke
-      summary: revoke a pass using passId or mobileNumber
+      summary: Revoke a pass using passId or mobileNumber
       operationId: revokePass
       requestBody:
         description: Request Object that has either passId or mobileNumber for which the current pass need to be revoked. Servers may choose to support all pass revocation for a tenant, but this must be implemented with care and under specific roles. 
@@ -168,6 +174,7 @@ paths:
                   $ref: '#/components/schemas/RequestHeader'
                 passId:
                   type: string
+                  example: cavkAF
                 tenantId:
                   type: string
                 mobileNumber:
@@ -191,7 +198,7 @@ paths:
     post:
       tags:
       - Verify
-      summary: verify a pass using passId 
+      summary: Verify a pass using passId 
       operationId: verifyPass
       requestBody:
         description: Request Object that has passId for which the current pass need to be verified. 
@@ -256,7 +263,7 @@ components:
           example: cavkAF
         validFrom:
           description: Timestamp (as per RFC3339 format) from which this pass is valid 
-          type: integer
+          type: string
           format: date-time
         validTill:
           description: Timestamp (as per RFC3339 format) upto which this pass is valid
@@ -314,8 +321,10 @@ components:
         name:
           description: name of the person/organization/entity for cases when the pass request is not being done by the passholder themselves. 
           type: string 
+          example: John Doe
         email:
           type: string
+          example: johndoe@gmail.com
         mobileNumber:
           pattern: ^\d{10}$
           type: string
@@ -330,12 +339,12 @@ components:
       properties:
         name:
           type: string 
-          example: Kwality Foods
+          example: Govt of Karnataka
         department:
           type: string
         contact:
           type: string
-          example: admin@kwalityfoods.org
+          example: kar@gov.in
         additionalText:
           type: string
 
@@ -382,6 +391,7 @@ components:
           format: date-time
         apiToken:
           type: string
+          example: 04875f14-80da-11ea-bc55-0242ac130003
           
     AdminBoundary:
       type: object
@@ -423,7 +433,7 @@ components:
           type: string
         city:
           type: string
-        location:
+        location:\
           description: Runnign text signifying a valid address for that pass holder - House Number, Apartment/Mohalla, Street, 
           type: string
         pinCode:
