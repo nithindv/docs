@@ -9,7 +9,7 @@ info:
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-  version: 1.0.1
+  version: 1.1.0
 
 servers:
 - url: https://epassapi.digit.org/pass/v1
@@ -23,7 +23,6 @@ tags:
   description: Request Object that has passId for which the current pass need to be verified.  
 
 paths:
-
   /_create:
     post:
       tags:
@@ -237,7 +236,7 @@ components:
       required:     
       - mobileNumber
       - status
-      - origin
+      - validLocation
       - purpose
       - validFrom
       - validTill
@@ -283,33 +282,19 @@ components:
           maxLength: 256
           type: string
           example: Distribution/Transport/Factory
-        origin:
-          description: Namespaced Origin/ Starting location of the pass holder. This is a mandatory fiels as server must perform checks to see that this location is valid for the tenant to which the pass request is being made. The namespace convention is - **state.district.city.locality**
-          
-            Based on geographical validity of the pass this may be indicate only state (valid thorughout the state), state + district (valid within a district), or state + district + city (valid within the city), or state + district + city + locality (valid only within a locality in the city). 
-          
-            Alternatively, this field may contain the zipcode of the geography in which the pass id valid. Please mark field isLocationAsZipcode as true to enable the server to parse the origin in this format.   
-            
-          type: string
-        destination:
-          description: For cases where goal of the apss is to permit the movement between two specific geo location this field indocates the Namespaced state + district + city + locality combination for the destination. The namespace convention is - **state.district.city.locality**
-          
-            For cases where origin and destination locations fall betwee two different tenants (basically two different approving authorites) separate passes with same pass holder details may be issued by each tenant (think of it as airline boading passes for a multi hop flight). 
-            
-            Alternatively, this field may contain the zipcode of the geography in which the pass id valid. Please mark field isLocationAsZipcode as true to enable the server to parse the origin in this format.  
-          type: string
-        isLocationAsZipcode:
-          type: boolean
-          default: false
-          description: Whether "origin" and "destination" locations are provided as zipcodes
+        validLocations:
+          description: locations represented as a boundry, path or polygon in which the pass is valid
+          oneOf:
+            - $ref: '#/components/schemas/AdminBoundary'
+            - $ref: '#/components/schemas/PinCodeBoundary'
+            - $ref: '#/components/schemas/AuthorizedRoute'
+            - $ref: '#/components/schemas/AuthorizedArea'
         idProof:
           $ref: '#/components/schemas/IDProof'
         requester:
           $ref: '#/components/schemas/Requester'
         issuer:
-          readOnly: true
-          allOf:
-          - $ref: '#/components/schemas/IssuingAuthority'
+          $ref: '#/components/schemas/IssuingAuthority'
         signature:
           description: Digital signature by the issuing authority to ensure the validity of the pass
           type: string
@@ -318,6 +303,7 @@ components:
           description: Reason for rejection in case request for pass is rejected by the system
           maxLength: 256
           type: string
+          
     Requester:
       description: Requester details need to be provided for cases where pass is being requested on behalf of someone else. This may be because of reasons such as -
         1. An orgranization is getting the pass issued to its essential employees. Please note that in such cases system may run additional checks on the requesters. 
@@ -340,6 +326,7 @@ components:
     IssuingAuthority:
       description: Human readable details of the issuing authority that can be embedded in the pass. These details will ideally be picked from the tenant configuration on the server. 
       type: object
+      readOnly: true
       properties:
         name:
           type: string 
@@ -395,3 +382,93 @@ components:
           format: date-time
         apiToken:
           type: string
+          
+    AdminBoundary:
+      type: object
+      description: Named representation of an administrative boundary. This can be used to indicate the validLocation for a pass. E.g. a pas valid through out the city will have boundary specified as state + district + city
+      
+        State/District/City are chosen from a defined set of meta data for the instance that should be made available to the API consumer through a meta data API at List of states on the instance - /location/data/
+          List of districts in a state - /location/data/{state}
+          List of cities in a district - /location/data/{state}/{ditrict}
+          List of localities in a city - /location/data/{state}/{district}/{city}
+      properties:
+        state:
+          type: string
+        district:
+          type: string
+        city:
+          type: string
+        location:
+          description: ward or any other sub section of a city
+          type: string
+      required:
+        - state
+    
+    PinCodeBoundary:
+      type: object
+      description: Pin Code based representation of a boundary
+      properties:
+        pinCode:
+          type: integer
+          pattern: '^\d{6}$'
+      required:
+        - pinCode     
+          
+    Address:
+      type: object  
+      properties:
+        state:
+          type: string
+        district:
+          type: string
+        city:
+          type: string
+        location:
+          description: Runnign text signifying a valid address for that pass holder - House Number, Apartment/Mohalla, Street, 
+          type: string
+        pinCode:
+          type: integer
+          pattern: '^\d{6}$'
+      required:
+        - state
+        - city
+        - location
+    
+    Location:
+      type: object
+      properties:
+        lat:
+          type: number
+          format: double
+        long:
+          type: number
+          format: double
+        accuracy:
+          type: integer
+      required:
+        - lat
+        - long
+        
+    AuthorizedRoute:
+      type: object
+      description: a valid route provided as array of locations (AdminBoundry/PinCodeBoundry/Address/Location). A route may represent return journey by adding the loactions back upto the starting location. 
+      properties:
+        path: 
+          type: array
+          items:
+            oneOf:
+            - $ref: '#/components/schemas/AdminBoundary' 
+            - $ref: '#/components/schemas/PinCodeBoundary' 
+            - $ref: '#/components/schemas/Address' 
+            - $ref: '#/components/schemas/Location'
+          minItems: 2
+
+    AuthorizedArea:
+      type: object
+      description: a closed polygion area repesented by an array of lat/longs with a conition that last element of array is equsl to first elemnt of the array.  
+      properties:
+        path: 
+          type: array
+          items:
+            $ref: '#/components/schemas/Location'
+          minItems: 3
