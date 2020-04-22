@@ -433,8 +433,8 @@ components:
           type: string
         city:
           type: string
-        location:\
-          description: Runnign text signifying a valid address for that pass holder - House Number, Apartment/Mohalla, Street, 
+        location:
+          description: Runnign text signifying a valid address for that pass holder House Number, Apartment/Mohalla, Street, 
           type: string
         pinCode:
           type: integer
@@ -475,7 +475,7 @@ components:
 
     AuthorizedArea:
       type: object
-      description: a closed polygion area repesented by an array of lat/longs with a conition that last element of array is equsl to first elemnt of the array.  
+      description: a closed polygion area repesented by an array of lat/longs with a conition that last element of array is equal to first elemnt of the array.  
       properties:
         path: 
           type: array
