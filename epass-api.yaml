@@ -270,12 +270,11 @@ paths:
         required: true
       responses:
         200:
-          description: Returns pass verification result pass object with validation details or error in case of a problem
+          description: Returns whether there exists a pass that is valid for given passId. Also returns the pass object in case a valid pass exists.
           content:
             application/json:
               schema:
                 type: object
-                description: Returns whether there exists a pass that is valid for given passId. Also returns teh pass object in case a valid pass exists. 
                 properties: 
                   isValid: 
                     type: boolean
@@ -566,3 +565,5 @@ components:
               - $ref: '#/components/schemas/Address' 
               - $ref: '#/components/schemas/Location'
             minItems: 2
+
+
