@@ -275,6 +275,7 @@ paths:
             application/json:
               schema:
                 type: object
+                description: Returns whether there exists a pass that is valid for given passId. Also returns teh pass object in case a valid pass exists. 
                 properties: 
                   isValid: 
                     type: boolean
