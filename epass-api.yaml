@@ -1,40 +1,38 @@
 openapi: 3.0.1
 info:
   title: Emergency Pass
-  description: This is API definition for an ePass server. More details about ePass
-    fucntionality can be found at [https://www.digit.org](https://www.digit.org)
-  termsOfService: https://digit.org
+  description: This is Version 2.0 of API definition for an ePass server
   contact:
     email: contact@egovernments.org
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-  version: 1.1.0
+  version: 2.0.0
 
 servers:
 - url: https://epassapi.digit.org/pass/v1
 
 tags:
 - name: Create
-  description: Request a new ePass
+  description: Request a new ePass application
 - name: Update
-  description: Approve/Reject a pass using passId or mobileNumber
+  description: Approve/Reject a pass application
 - name: Search
-  description: Search passes using a combination of parameters 
+  description: Search applications/passes using a combination of parameters 
 - name: Revoke
-  description: Revoke a pass using passId or mobileNumber
+  description: Revoke pass(es)
 - name: Verify
   description: Verify a pass using passId 
 
 paths:
-  /_create:
+  /application/_create:
     post:
       tags:
       - Create
       summary: Request a new ePass
       operationId: createPass
       requestBody:
-        description: This API allows requester to request a new ePass. Passes are always created in "requested" status. They can be downloaded once the approval happens using the required workflow. All pass requesters are required to call this method to request a new pass. Api accepts requestHeader and Pass object as input parameters
+        description: This API allows requester to request a new ePass. A valid pass can be downloaded once the approval happens using the required workflow. All pass requesters are required to call this method to request a new pass.
         content:
           application/json:
             schema:
@@ -42,15 +40,17 @@ paths:
               properties:
                 header:
                   $ref: '#/components/schemas/RequestHeader'
-                pass:
+                application:
+                  $ref: '#/components/schemas/Application'
+                passDetails:
                   $ref: '#/components/schemas/Pass'
               required:
                 - header
-                - pass
+                - application
         required: true
       responses:
         200:
-          description: Processing Successful. Pass Object is returned along with system generated uuid and pass id. Pelase note that based on the workfow configured at the server - this pass may still not be a valid pass (a valid pass should have status as approved, have issuing authority details and a valid digital signature assigned to it).  
+          description: Processing Successful. Application object is returned with an applicatioId populated by the server.  
           content:
             application/json:
               schema:
@@ -62,7 +62,7 @@ paths:
                     type: string
                     format: date-time
                   pass:
-                    $ref: '#/components/schemas/Pass'
+                    $ref: '#/components/schemas/Application'
         default:
           description: Request failed
           content:
@@ -70,7 +70,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /_update:
+  /application/_update:
     post:
       tags:
       - Update
@@ -87,12 +87,11 @@ paths:
                   $ref: '#/components/schemas/RequestHeader'
                 tenantid:
                   type: string
-                passId:
+                applicationId:
+                  maxLength: 12
+                  minLength: 8
                   type: string
-                  example: cavkAF
-                mobileNumber:
-                  type: string
-                  example: 9999999999
+                  format: '\d{8,12}'
                 status:
                   type: string
                   enum: 
@@ -101,6 +100,7 @@ paths:
               required: 
                 - header
                 - tenantid
+                - applicationId
                 - status
         required: true
       responses:
@@ -113,14 +113,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /_search:
+  /application/_search:
     post:
       tags:
       - Search
       summary: Search passes using a combination of parameters 
-      operationId: searchPass
+      operationId: searchApplication
       requestBody:
-        description: Search passes using combination of parameters. If multiple parameter values are provieded they will be treated as an "and" condition for the search. Please note that if passId is provided then mobileNumber is not mandatory for the search.
+        description: Search applications using combination of parameters. If multiple parameter values are provieded they will be treated as an "and" condition for the search
         content:
           application/json:
             schema:
@@ -128,9 +128,13 @@ paths:
               properties:
                 header:
                   $ref: '#/components/schemas/RequestHeader'
-                passId:
+                tenantid:
                   type: string
-                  example: cavkAF                    
+                applicationId:
+                  maxLength: 12
+                  minLength: 8
+                  type: string
+                  format: '\d{8,12}'
                 mobileNumber:
                   type: string
                   example: 9999999999
@@ -139,7 +143,51 @@ paths:
                   example: approved
               required: 
                 - header
-                - mobileNumber
+                - tenantId
+        required: true
+      responses:
+        200:
+          description: Operation Succesful
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Application'
+        default:
+          description: Request failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /pass/_search:
+    post:
+      tags:
+      - Search
+      summary: Search passes using a combination of parameters 
+      operationId: searchPass
+      requestBody:
+        description: Search passes using combination of parameters. If multiple parameter values are provieded they will be treated as an "and" condition for the search. 
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                header:
+                  $ref: '#/components/schemas/RequestHeader'
+                passId:
+                  maxLength: 12
+                  minLength: 8
+                  type: string
+                  format: '\d{8,12}'                   
+                mobileNumber:
+                  type: string
+                  example: 9999999999
+                tenantId:
+                  type: string
+              required: 
+                - header
         required: true
       responses:
         200:
@@ -157,7 +205,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       
-  /_revoke:
+  /pass/_revoke:
     post:
       tags:
       - Revoke
@@ -173,8 +221,10 @@ paths:
                 header:
                   $ref: '#/components/schemas/RequestHeader'
                 passId:
+                  maxLength: 12
+                  minLength: 8
                   type: string
-                  example: cavkAF
+                  format: '\d{8,12}'                
                 tenantId:
                   type: string
                 mobileNumber:
@@ -182,7 +232,7 @@ paths:
                   example: 9999999999
               required: 
                 - header
-                - mobileNumber
+                - tenantId
         required: true
       responses:
         200:
@@ -194,7 +244,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /_verify:
+  /pass/_verify:
     post:
       tags:
       - Verify
@@ -239,14 +289,7 @@ paths:
 
 components:
   schemas:
-    Pass:
-      required:     
-      - mobileNumber
-      - status
-      - validLocation
-      - purpose
-      - validFrom
-      - validTill
+    Application:
       type: object
       properties:
         tenantId:
@@ -254,13 +297,49 @@ components:
           
             Please note that a issuing entity may issue the pass in the name of any issuing authority as configured with the system. 
           type: string
-          maxLength: 128
-        passId:
-          description: Human readable id assigned to the pass to be used in verification calls and display purposes. This value only needs to be unique within the context of active passes within a duration. 
+          maxLength: 64
+        applicationId:
+          description: Reference number for the application assigned by the server 
           maxLength: 12
-          minLength: 6
+          minLength: 8
           type: string
-          example: cavkAF
+          format: '\d{8,12}'
+          readOnly: true
+        status:
+          type: string
+          description: Pass status
+          readOnly: true
+          enum:
+          - requested
+          - approved
+          - rejected
+          example: approved
+        rejectionReason:
+          description: Reason for rejection in case request for pass is rejected by the system
+          maxLength: 64
+          type: string
+        requester:
+          $ref: '#/components/schemas/Requester'
+        pass:
+          $ref: '#/components/schemas/Pass'
+
+    Pass:
+      required:     
+      - mobileNumber
+      - validLocation
+      - purpose
+      - validFrom
+      - validTill
+      type: object
+      properties:
+        passId:
+          description: Human readable id assigned to the pass by the system to be used in verification calls and display purposes. This value needs to be unique within the context of active passes within a duration. Given that this value may need to be typed in places like SMS, IVRS etc, it is recommended that this be all digits 
+          type: string
+          maxLength: 12
+          minLength: 8
+          format: '\d{8,12}'
+          readOnly: true
+          example: 56756401
         validFrom:
           description: Timestamp (as per RFC3339 format) from which this pass is valid 
           type: string
@@ -274,42 +353,34 @@ components:
           pattern: ^\d{10}$
           type: string
           example: 9999999999
-        status:
-          type: string
-          description: Pass status
-          readOnly: true
-          enum:
-          - requested
-          - approved
-          - rejected
-          - expired
-          example: approved
         purpose:
           description: This field captures the reason for which the pass is being requeted, to be filled by the requester of the pass
-          maxLength: 256
+          maxLength: 64
           type: string
           example: Distribution/Transport/Factory
-        validLocations:
-          description: locations represented as a boundry, path or polygon in which the pass is valid
-          oneOf:
-            - $ref: '#/components/schemas/AdminBoundary'
-            - $ref: '#/components/schemas/PinCodeBoundary'
-            - $ref: '#/components/schemas/AuthorizedRoute'
-            - $ref: '#/components/schemas/AuthorizedArea'
-        idProof:
-          $ref: '#/components/schemas/IDProof'
-        requester:
-          $ref: '#/components/schemas/Requester'
+        authorizedArea:
+          $ref: '#/components/schemas/AuthorizedArea'
+        idRefernce:
+          $ref: '#/components/schemas/IDReference'
         issuer:
           $ref: '#/components/schemas/IssuingAuthority'
         signature:
-          description: Digital signature by the issuing authority to ensure the validity of the pass
+          $ref: '#/components/schemas/Signature'
+          
+    Signature:
+      description: Digital signature details for the pass object
+      type: object
+      readOnly: true
+      properties:
+        certUrl: 
           type: string
-          readOnly: true
-        rejectionReason:
-          description: Reason for rejection in case request for pass is rejected by the system
-          maxLength: 256
+          maxLength: 128
+          description: HTTP url to download the digital certificate or public key to validate teh signature on the pass
+          format: url
+          example: http://myserver.com/epass/tenant1/signingcert
+        signedJWT:
           type: string
+          description: JWT signature on Pass Object minus the signature (this) field of the pass object
           
     Requester:
       description: Requester details need to be provided for cases where pass is being requested on behalf of someone else. This may be because of reasons such as -
@@ -321,9 +392,11 @@ components:
         name:
           description: name of the person/organization/entity for cases when the pass request is not being done by the passholder themselves. 
           type: string 
+          maxLength: 64
           example: John Doe
         email:
           type: string
+          maxLength: 64
           example: johndoe@gmail.com
         mobileNumber:
           pattern: ^\d{10}$
@@ -339,19 +412,23 @@ components:
       properties:
         name:
           type: string 
+          maxLength: 64
           example: Govt of Karnataka
         department:
           type: string
+          maxLength: 32
         contact:
           type: string
+          maxLength: 64
           example: kar@gov.in
         additionalText:
           type: string
+          maxLength: 128
 
-    IDProof:
-      description: In case where a particular tenant needs the ID proof to be carried along the pass - these field allow the pass holder to indicate the type of id being carried and last 4 digits of the aforemention id type. It is important from the privacy and security point of view that complete ID details of the pass holder are not captured in the pass.
+    IDReference:
+      description: In case where a particular tenant needs the ID proof to be carried along the pass - these field allow the pass holder to indicate the type of id being carried and last 4 digits of the aforemention id type. It is important from the privacy and security point of view that complete ID details of the pass holder are not captured in the pass. It may be useful in cases when pass holder does/can not carry the mobile number.  
       
-        > Warning - Based on multiple discussions, it is possible that this is deprecated and repaced with simple declaration on the pass that it is only valid when accompanied by a valid government id
+        Please note that this field may not be required for all types of passes and should be used with care. 
       
       required: 
       - idType
@@ -361,7 +438,7 @@ components:
         idType:
           maxLength: 16
           type: string
-        number:
+        last4:
           maxLength: 4
           type: string
 
@@ -373,6 +450,7 @@ components:
       - code
       - message
       type: object
+      readOnly: true
       properties:
         code:
           type: string
@@ -386,6 +464,7 @@ components:
       properties:
         messageId: 
           type: string
+          maxLength: 64
         timestamp:
           type: string
           format: date-time
@@ -404,13 +483,17 @@ components:
       properties:
         state:
           type: string
+          maxLength: 16
         district:
           type: string
+          maxLength: 16
         city:
           type: string
+          maxLength: 16
         location:
           description: ward or any other sub section of a city
           type: string
+          maxLength: 16
       required:
         - state
     
@@ -429,10 +512,13 @@ components:
       properties:
         state:
           type: string
+          maxLength: 16
         district:
           type: string
+          maxLength: 16
         city:
           type: string
+          maxLength: 16
         location:
           description: Runnign text signifying a valid address for that pass holder House Number, Apartment/Mohalla, Street, 
           type: string
@@ -459,26 +545,23 @@ components:
         - lat
         - long
         
-    AuthorizedRoute:
-      type: object
-      description: a valid route provided as array of locations (AdminBoundry/PinCodeBoundry/Address/Location). A route may represent return journey by adding the loactions back upto the starting location. 
-      properties:
-        path: 
-          type: array
-          items:
-            oneOf:
-            - $ref: '#/components/schemas/AdminBoundary' 
-            - $ref: '#/components/schemas/PinCodeBoundary' 
-            - $ref: '#/components/schemas/Address' 
-            - $ref: '#/components/schemas/Location'
-          minItems: 2
-
     AuthorizedArea:
       type: object
-      description: a closed polygion area repesented by an array of lat/longs with a conition that last element of array is equal to first elemnt of the array.  
+      description: A valid geographical area for which the pass is valid. This can be in various forms - 
+        1. Admin or PinCode array - Can be one or more
+        2. Address or Locations - Need to have at least 2 items to indicat origin to destination or a multi point journey path/area (polygon) 
       properties:
         path: 
-          type: array
-          items:
-            $ref: '#/components/schemas/Location'
-          minItems: 3
+          oneOf:
+          - type: array
+            items:
+              oneOf:
+              - $ref: '#/components/schemas/AdminBoundary' 
+              - $ref: '#/components/schemas/PinCodeBoundary'
+            minItems: 1
+          - type: array
+            items:
+              oneOf:
+              - $ref: '#/components/schemas/Address' 
+              - $ref: '#/components/schemas/Location'
+            minItems: 2
