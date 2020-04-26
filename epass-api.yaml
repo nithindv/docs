@@ -47,6 +47,7 @@ paths:
               required:
                 - header
                 - application
+                - passDetails
         required: true
       responses:
         200:
@@ -320,8 +321,6 @@ components:
           type: string
         requester:
           $ref: '#/components/schemas/Requester'
-        pass:
-          $ref: '#/components/schemas/Pass'
 
     Pass:
       required:     
