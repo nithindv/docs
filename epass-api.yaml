@@ -98,6 +98,9 @@ paths:
                   enum: 
                   - approved
                   - rejected
+                rejectionReason:
+                  type: string
+                  maxLength: 64
               required: 
                 - header
                 - tenantid
@@ -524,6 +527,10 @@ components:
         pinCode:
           type: integer
           pattern: '^\d{6}$'
+        geoRadius:
+          description: radius of area in meters. This can be used to denote an area of given number of meters with this address as center point. 
+          type: integer
+          default: 0
       required:
         - state
         - city
@@ -531,6 +538,7 @@ components:
     
     Location:
       type: object
+      description: location expressed in lat/long and optional accurancy indicator. With a non zero value of geoRadius it can also represent an area with given lat/long as mid point/center of the circle. 
       properties:
         lat:
           type: number
@@ -538,8 +546,10 @@ components:
         long:
           type: number
           format: double
-        accuracy:
+        geoRadius:
+          description: radius of area in meters
           type: integer
+          default: 0
       required:
         - lat
         - long
@@ -557,12 +567,6 @@ components:
               oneOf:
               - $ref: '#/components/schemas/AdminBoundary' 
               - $ref: '#/components/schemas/PinCodeBoundary'
-            minItems: 1
-          - type: array
-            items:
-              oneOf:
               - $ref: '#/components/schemas/Address' 
               - $ref: '#/components/schemas/Location'
-            minItems: 2
-
-
+            minItems: 1
